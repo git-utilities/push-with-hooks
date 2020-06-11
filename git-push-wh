@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+
+set -E -o functrace
+
+## Find true directory this script resides in
+__SOURCE__="${BASH_SOURCE[0]}"
+while [[ -h "${__SOURCE__}" ]]; do
+    __SOURCE__="$(find "${__SOURCE__}" -type l -ls | sed -n 's@^.* -> \(.*\)@\1@p')"
+done
+__DIR__="$(cd -P "$(dirname "${__SOURCE__}")" && pwd)"
+
+
+## Source module code within this script
+source "${__DIR__}/shared_functions/modules/trap-failure/failure.sh"
+trap 'failure "LINENO" "BASH_LINENO" "${BASH_COMMAND}" "${?}"' ERR
+
+
+if [[ -d "${PWD}/.git/hooks" ]]; then
+		_hooks_dir="${PWD}/.git/hooks"
+elif [[ -d "${PWD}/hooks" ]]; then
+		_hooks_dir="${PWD}/hooks"
+else
+		printf >&2 'No Git hooks directory detected!\n'
+		exit 1
+fi
+
+
+[[ -e "${_hooks_dir}/pre-push" ]] && {
+    (("${#VERBOSE}")) && {
+        printf '%s/pre-push\n' "${_hooks_dir}"
+    }
+		"${_hooks_dir}/pre-push" "${@}"
+}
+
+git push "${@}"
+
+[[ -e "${_hooks_dir}/post-push" ]] && {
+    (("${#VERBOSE}")) && {
+  		  printf '%s/post-push\n' "${_hooks_dir}"
+    }
+		"${_hooks_dir}/post-push" "${@}"
+}
